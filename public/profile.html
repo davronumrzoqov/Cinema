@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Profil — saqlangan va sotib olingan kinolar">
+  <title>Cinema — Profil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body>
+  <main class="profile-page">
+    <header class="admin-header">
+      <h1>Profil</h1>
+      <a href="main.html" class="link-btn">← Kinolarga qaytish</a>
+    </header>
+
+    <p id="guard-msg" class="form-error" role="alert"></p>
+
+    <div id="profile-content" class="hidden">
+      <!-- Shaxsiy ma'lumot -->
+      <section class="panel profile-head" aria-label="Shaxsiy ma'lumotlar">
+        <div class="profile-avatar" id="p-avatar" aria-hidden="true">?</div>
+        <div class="profile-id">
+          <h2 id="p-email">—</h2>
+          <p class="profile-sub">
+            <span id="p-role" class="role-badge role-user">Foydalanuvchi</span>
+            <span id="p-provider" class="profile-provider"></span>
+          </p>
+        </div>
+        <div class="profile-head-actions">
+          <a href="admin.html" id="p-admin-link" class="btn btn-primary hidden">⚙ Admin panel</a>
+          <button type="button" class="btn btn-ghost" id="logout-btn">Chiqish</button>
+        </div>
+      </section>
+
+      <!-- Statistika -->
+      <section class="panel" aria-labelledby="pstats-heading">
+        <h2 id="pstats-heading" class="panel-title">Mening statistikam</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Saqlanganlar</span>
+            <strong id="stat-bookmarks" class="stat-value">—</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Sotib olingan</span>
+            <strong id="stat-owned" class="stat-value">—</strong>
+          </div>
+          <div class="stat-card stat-pending">
+            <span class="stat-label">Tekshirilmoqda</span>
+            <strong id="stat-pending" class="stat-value">—</strong>
+          </div>
+          <div class="stat-card stat-primary">
+            <span class="stat-label">Jami sarflangan</span>
+            <strong id="stat-spent" class="stat-value">—</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sotib olingan kinolar -->
+      <section class="panel" aria-labelledby="owned-heading">
+        <h2 id="owned-heading" class="panel-title">Sotib olingan kinolar (<span id="owned-count">0</span>)</h2>
+        <div id="owned-grid" class="profile-grid"></div>
+      </section>
+
+      <!-- Saqlangan kinolar -->
+      <section class="panel" aria-labelledby="saved-heading">
+        <h2 id="saved-heading" class="panel-title">Saqlangan kinolar (<span id="saved-count">0</span>)</h2>
+        <div id="saved-grid" class="profile-grid"></div>
+      </section>
+
+      <!-- Parol o'zgartirish -->
+      <section class="panel" id="password-panel" aria-labelledby="pass-heading">
+        <h2 id="pass-heading" class="panel-title">Parolni o'zgartirish</h2>
+        <form id="password-form" class="movie-form" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="pw-current">Joriy parol</label>
+              <input type="password" id="pw-current" autocomplete="current-password" placeholder="••••••••" required>
+            </div>
+            <div class="field">
+              <label for="pw-next">Yangi parol</label>
+              <input type="password" id="pw-next" autocomplete="new-password" placeholder="Kamida 6 belgi" required>
+            </div>
+            <div class="field">
+              <label for="pw-confirm">Yangi parolni takrorlang</label>
+              <input type="password" id="pw-confirm" autocomplete="new-password" placeholder="••••••••" required>
+            </div>
+          </div>
+          <p id="password-error" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary">Parolni yangilash</button>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script src="./js/api.js"></script>
+  <script src="./js/profile.js" defer></script>
+</body>
+
+</html>

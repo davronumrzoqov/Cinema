@@ -22,9 +22,37 @@
     <p id="guard-msg" class="form-error" role="alert"></p>
 
     <div id="admin-content" class="hidden">
+      <section class="panel" aria-labelledby="stats-heading">
+        <h2 id="stats-heading" class="panel-title">Daromad</h2>
+        <div id="stats-grid" class="stats-grid">
+          <div class="stat-card stat-primary">
+            <span class="stat-label">Jami daromad</span>
+            <strong id="stat-total" class="stat-value">—</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Bu oy</span>
+            <strong id="stat-month" class="stat-value">—</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Sotuvlar soni</span>
+            <strong id="stat-sales" class="stat-value">—</strong>
+          </div>
+          <div class="stat-card stat-pending">
+            <span class="stat-label">Kutilayotgan pul</span>
+            <strong id="stat-pending" class="stat-value">—</strong>
+          </div>
+        </div>
+        <div id="stats-top" class="stats-top"></div>
+      </section>
+
       <section class="panel" aria-labelledby="payments-heading">
         <h2 id="payments-heading" class="panel-title">To'lovlar (<span id="pending-count">0</span> ta kutilmoqda)</h2>
         <div id="payments-list" class="movie-list"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="users-heading">
+        <h2 id="users-heading" class="panel-title">Foydalanuvchilar (<span id="user-count">0</span>)</h2>
+        <div id="users-list" class="movie-list"></div>
       </section>
 
       <section class="panel" aria-labelledby="settings-heading">
@@ -78,6 +106,10 @@
             <div class="field">
               <label for="m-price">Narx (so'm) — 0 = bepul</label>
               <input type="number" id="m-price" min="0" step="500" value="0">
+            </div>
+            <div class="field">
+              <label for="m-rating">Reyting (IMDb, 0–10)</label>
+              <input type="number" id="m-rating" min="0" max="10" step="0.1" placeholder="8.5">
             </div>
             <div class="field field-wide">
               <label for="m-poster">Poster rasm URL</label>

@@ -18,3 +18,10 @@ services:
         sync: false # pul tushadigan karta raqami (dashboardda kiritiladi)
       - key: PAYMENT_CARD_OWNER
         sync: false # karta egasining ismi
+      # Payme (avtomatik to'lov) — Payme kabinetdan olinadi. Bo'sh bo'lsa Payme o'chiq.
+      - key: PAYME_MERCHANT_ID
+        sync: false # Payme kassa (merchant) ID
+      - key: PAYME_KEY
+        sync: false # Payme kassa maxfiy kaliti
+      - key: PUBLIC_URL
+        sync: false # saytning tashqi manzili, masalan https://cinema.onrender.com

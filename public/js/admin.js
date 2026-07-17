@@ -22,8 +22,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  let me;
   try {
-    const me = await Api.me();
+    me = await Api.me();
     if (me.role !== 'admin') {
       guard.textContent = 'Bu sahifa faqat admin uchun. Yo\'naltirilmoqda…';
       setTimeout(() => location.href = 'main.html', 1500);
@@ -39,6 +40,128 @@ document.addEventListener('DOMContentLoaded', async () => {
   content.classList.remove('hidden');
 
   const fmtPrice = (p) => p ? String(p).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' so\'m' : 'Bepul';
+
+  // -------------------------------------------------------------------
+  // Daromad statistikasi
+  // -------------------------------------------------------------------
+
+  async function loadStats() {
+    let s;
+    try {
+      s = await Api.adminStats();
+    } catch { return; }
+
+    document.getElementById('stat-total').textContent = fmtPrice(s.totalRevenue);
+    document.getElementById('stat-month').textContent = fmtPrice(s.monthRevenue);
+    document.getElementById('stat-sales').textContent = s.salesCount + ' ta';
+    document.getElementById('stat-pending').textContent = fmtPrice(s.pendingRevenue);
+
+    const topEl = document.getElementById('stats-top');
+    if (s.topMovies && s.topMovies.length) {
+      topEl.innerHTML = '<h3 class="stats-top-title">Eng ko\'p daromad keltirganlar</h3>' +
+        s.topMovies.map(m =>
+          `<div class="stats-top-row"><span>${m.name}</span><span>${m.count} ta · ${fmtPrice(m.revenue)}</span></div>`
+        ).join('');
+    } else {
+      topEl.innerHTML = '';
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Foydalanuvchilarni boshqarish
+  // -------------------------------------------------------------------
+
+  const usersList = document.getElementById('users-list');
+  const userCount = document.getElementById('user-count');
+  const myId = me.id;
+
+  async function loadUsers() {
+    let users;
+    try {
+      users = await Api.adminUsers();
+    } catch { return; }
+
+    userCount.textContent = users.length;
+    usersList.innerHTML = '';
+
+    users.forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'movie-row';
+
+      const roleBadge = u.role === 'admin'
+        ? '<span class="role-badge role-admin">👑 Admin</span>'
+        : '<span class="role-badge role-user">Foydalanuvchi</span>';
+      const providerIcon = u.provider === 'google' ? ' · Google orqali' : '';
+
+      const info = document.createElement('div');
+      info.className = 'movie-row-info';
+      info.innerHTML = `
+        <strong>${u.email} ${u.id === myId ? '(siz)' : ''}</strong>
+        <span>${u.purchaseCount} ta xarid · ${fmtPrice(u.totalSpent)} · ${u.bookmarkCount} ta saqlangan${providerIcon}</span>
+        <span class="movie-row-tags">${roleBadge}</span>
+      `;
+
+      const actions = document.createElement('div');
+      actions.className = 'movie-row-actions';
+
+      if (u.id !== myId) {
+        // Rol o'zgartirish tugmasi
+        const roleBtn = document.createElement('button');
+        roleBtn.type = 'button';
+        roleBtn.className = 'btn btn-ghost btn-sm';
+        roleBtn.textContent = u.role === 'admin' ? 'Adminlikdan olish' : 'Admin qilish';
+        roleBtn.addEventListener('click', async () => {
+          roleBtn.disabled = true;
+          try {
+            const newRole = u.role === 'admin' ? 'user' : 'admin';
+            await Api.setUserRole(u.id, newRole);
+            showToast(newRole === 'admin' ? `${u.email} endi admin` : `${u.email} adminlikdan olindi`, 'success');
+            loadUsers();
+          } catch (err) { showToast(err.message, 'error'); roleBtn.disabled = false; }
+        });
+
+        // Parol tiklash (faqat email orqali kirganlar uchun)
+        if (u.provider !== 'google') {
+          const passBtn = document.createElement('button');
+          passBtn.type = 'button';
+          passBtn.className = 'btn btn-ghost btn-sm';
+          passBtn.textContent = 'Parol tiklash';
+          passBtn.addEventListener('click', async () => {
+            const newPass = prompt(`${u.email} uchun yangi parol (kamida 6 belgi):`);
+            if (!newPass) return;
+            try {
+              await Api.resetUserPassword(u.id, newPass);
+              showToast('Parol yangilandi', 'success');
+            } catch (err) { showToast(err.message, 'error'); }
+          });
+          actions.appendChild(passBtn);
+        }
+
+        // O'chirish tugmasi
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-danger btn-sm';
+        delBtn.textContent = 'O\'chirish';
+        delBtn.addEventListener('click', async () => {
+          if (!confirm(`${u.email} o'chirilsinmi? Xaridlari va saqlanganlari ham o'chadi.`)) return;
+          delBtn.disabled = true;
+          try {
+            await Api.deleteUser(u.id);
+            showToast('Foydalanuvchi o\'chirildi', 'success');
+            loadUsers();
+            loadStats();
+          } catch (err) { showToast(err.message, 'error'); delBtn.disabled = false; }
+        });
+
+        actions.appendChild(roleBtn);
+        actions.appendChild(delBtn);
+      }
+
+      row.appendChild(info);
+      row.appendChild(actions);
+      usersList.appendChild(row);
+    });
+  }
 
   // -------------------------------------------------------------------
   // To'lovlar navbati
@@ -86,6 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await Api.approvePurchase(p.id);
             showToast('To\'lov tasdiqlandi — kino foydalanuvchiga ochildi', 'success');
             loadPayments();
+            loadStats();
           } catch (err) { showToast(err.message, 'error'); okBtn.disabled = false; }
         });
 
@@ -112,8 +236,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  loadStats();
+  loadUsers();
+
   // Yangi to'lovlar kelganini ko'rish uchun har 15 soniyada yangilab turamiz
-  setInterval(() => loadPayments().catch(() => {}), 15000);
+  setInterval(() => { loadPayments().catch(() => {}); loadStats(); }, 15000);
 
   // -------------------------------------------------------------------
   // To'lov kartasi sozlamalari
@@ -165,6 +292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       poster: document.getElementById('m-poster').value.trim(),
       trailer: document.getElementById('m-trailer').value.trim(),
       price: parseFloat(document.getElementById('m-price').value) || 0,
+      rating: parseFloat(document.getElementById('m-rating').value) || 0,
       trending: document.getElementById('m-trending').checked,
       top: document.getElementById('m-top').checked,
       popular: document.getElementById('m-popular').checked
@@ -182,6 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return 'Treyler — YouTube video ID bo\'lishi kerak (masalan: YoHD9XEInc0)';
     }
     if (data.price < 0) return 'Narx manfiy bo\'lishi mumkin emas';
+    if (data.rating < 0 || data.rating > 10) return 'Reyting 0–10 oralig\'ida bo\'lishi kerak';
     return null;
   }
 
@@ -194,6 +323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('m-poster').value = movie.poster;
     document.getElementById('m-trailer').value = movie.trailer || '';
     document.getElementById('m-price').value = movie.price;
+    document.getElementById('m-rating').value = movie.rating || '';
     document.getElementById('m-trending').checked = movie.trending;
     document.getElementById('m-top').checked = movie.top;
     document.getElementById('m-popular').checked = movie.popular;
@@ -280,7 +410,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .filter(Boolean).join(' · ') || '—';
       info.innerHTML = `
         <strong>${movie.name}</strong>
-        <span>${movie.year} · ${movie.genre} · ${movie.limit} · ${fmtPrice(movie.price)}</span>
+        <span>${movie.year} · ${movie.genre} · ${movie.limit}${movie.rating ? ' · ★ ' + Number(movie.rating).toFixed(1) : ''} · ${fmtPrice(movie.price)}</span>
         <span class="movie-row-tags">${tags}</span>
       `;
 
@@ -325,5 +455,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderList();
   }
 
-  await Promise.all([loadMovies(), loadPayments(), loadSettings()]);
+  // Bir bo'lim yuklanmasa ham qolganlari ishlayveradi
+  await Promise.all([
+    loadMovies().catch(err => showToast(err.message, 'error')),
+    loadPayments().catch(() => { paymentsList.innerHTML = '<p class="empty-msg">To\'lovlarni yuklab bo\'lmadi</p>'; }),
+    loadSettings()
+  ]);
 });

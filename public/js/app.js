@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     purchases: new Set(),   // tasdiqlangan xaridlar
     pending: new Set(),     // tekshirilayotgan to'lovlar
     query: '',
-    filter: 'all' // all | movie | series | bookmarks
+    filter: 'all', // all | movie | series | bookmarks
+    sort: 'new'    // new | old | rating | name
   };
 
   // 13000 -> "13 000 so'm"
@@ -36,10 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (me.role === 'admin') document.getElementById('admin-link').classList.remove('hidden');
 
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    Api.clearToken();
-    location.href = 'index.html';
-  });
+  // Sidebar avatarida email bosh harfi ko'rinadi, bosilsa profilga o'tadi
+  document.getElementById('avatar-initial').textContent = (me.email || '?')[0].toUpperCase();
 
   // ---------------------------------------------------------------------
   // Scroll-reveal animatsiya
@@ -123,19 +122,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     showPoster(movie);
     modalActions.innerHTML = '<p class="purchase-note">Yuklanmoqda…</p>';
 
+    // Payme yoqilganmi? (avtomatik to'lov)
+    let paymeEnabled = false;
+    try { paymeEnabled = (await Api.paymeConfig()).enabled; } catch {}
+
     let card;
     try {
       card = await Api.paymentCard();
     } catch (err) {
-      modalActions.innerHTML = `<p class="form-error">${err.message}</p>`;
+      // Payme bor bo'lsa, karta sozlanmagan bo'lsa ham to'lash mumkin
+      if (!paymeEnabled) {
+        modalActions.innerHTML = `<p class="form-error">${err.message}</p>`;
+        return;
+      }
+      card = null;
+    }
+
+    // --- Payme bloki (avtomatik) ---
+    const paymeBlock = paymeEnabled ? `
+      <div class="payme-box">
+        <p class="purchase-note">Bu kino pullik — narxi <strong>${fmtPrice(movie.price)}</strong>.
+        Payme orqali to'lang — to'lov tasdiqlanishi bilan kino <strong>avtomatik</strong> ochiladi:</p>
+        <button type="button" class="btn btn-payme btn-block" id="payme-btn">Payme orqali to'lash — ${fmtPrice(movie.price)}</button>
+        <p id="payme-error" class="form-error" role="alert"></p>
+      </div>` : '';
+
+    // Karta sozlanmagan bo'lsa (faqat Payme) — p2p blokini ko'rsatmaymiz
+    if (!card) {
+      modalActions.innerHTML = paymeBlock;
+      attachPaymeHandler(movie);
       return;
     }
 
+    const orDivider = paymeEnabled ? '<div class="pay-divider"><span>yoki kartaga o\'tkazma</span></div>' : '';
     const prettyCard = card.cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
-    modalActions.innerHTML = `
+    modalActions.innerHTML = paymeBlock + orDivider + `
       <div class="p2p-box">
-        <p class="purchase-note">Bu kino pullik — narxi <strong>${fmtPrice(movie.price)}</strong>.
-        Quyidagi kartaga <strong>${fmtPrice(movie.price)}</strong> o'tkazing, so'ng «To'lov qildim» tugmasini bosing:</p>
+        ${paymeEnabled ? '' : `<p class="purchase-note">Bu kino pullik — narxi <strong>${fmtPrice(movie.price)}</strong>.</p>`}
+        <p class="purchase-note">Quyidagi kartaga <strong>${fmtPrice(movie.price)}</strong> o'tkazing, so'ng «To'lov qildim» tugmasini bosing:</p>
         <div class="p2p-card">
           <span class="p2p-number" id="p2p-number">${prettyCard}</span>
           <button type="button" class="btn btn-ghost btn-sm" id="copy-card">Nusxa olish</button>
@@ -174,11 +198,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.classList.remove('btn-loading');
       }
     });
+
+    attachPaymeHandler(movie);
+  }
+
+  // Payme tugmasi: checkout havolasini olib, Payme sahifasiga yo'naltiramiz
+  function attachPaymeHandler(movie) {
+    const paymeBtn = document.getElementById('payme-btn');
+    if (!paymeBtn) return;
+    paymeBtn.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.classList.add('btn-loading');
+      try {
+        const { url } = await Api.payWithPayme(movie.id);
+        window.location.href = url; // Payme to'lov sahifasiga o'tamiz
+      } catch (err) {
+        document.getElementById('payme-error').textContent = err.message;
+        btn.disabled = false;
+        btn.classList.remove('btn-loading');
+      }
+    });
   }
 
   function openModal(movie) {
     modalTitle.textContent = movie.name;
-    modalMeta.innerHTML = `<span>${movie.year}</span><span class="dot" aria-hidden="true"></span><span>${movie.genre}</span><span class="dot" aria-hidden="true"></span><span>${movie.limit}</span><span class="dot" aria-hidden="true"></span><span>${fmtPrice(movie.price)}</span>`;
+    modalMeta.innerHTML = `<span>${movie.year}</span><span class="dot" aria-hidden="true"></span><span>${movie.genre}</span><span class="dot" aria-hidden="true"></span><span>${movie.limit}</span>` +
+      (movie.rating ? `<span class="dot" aria-hidden="true"></span><span class="rating-chip">★ ${Number(movie.rating).toFixed(1)}</span>` : '') +
+      `<span class="dot" aria-hidden="true"></span><span>${fmtPrice(movie.price)}</span>`;
     modal.classList.remove('hidden');
 
     if (movie.price > 0 && !state.purchases.has(movie.id)) {
@@ -257,7 +304,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   function metaLine(movie) {
     const p = document.createElement('p');
     p.className = 'card-meta';
-    p.innerHTML = `<span>${movie.year}</span><span class="dot" aria-hidden="true"></span><span>${movie.genre}</span><span class="dot" aria-hidden="true"></span><span>${movie.limit}</span>`;
+    p.innerHTML = `<span>${movie.year}</span><span class="dot" aria-hidden="true"></span><span>${movie.genre}</span><span class="dot" aria-hidden="true"></span><span>${movie.limit}</span>` +
+      (movie.rating ? `<span class="dot" aria-hidden="true"></span><span class="rating-chip">★ ${Number(movie.rating).toFixed(1)}</span>` : '');
     return p;
   }
 
@@ -348,12 +396,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     items.forEach((m, i) => container.appendChild(factory(m, i)));
   }
 
+  const SORTERS = {
+    new: (a, b) => b.year - a.year || (b.rating || 0) - (a.rating || 0),
+    old: (a, b) => a.year - b.year || (b.rating || 0) - (a.rating || 0),
+    rating: (a, b) => (b.rating || 0) - (a.rating || 0) || b.year - a.year,
+    name: (a, b) => a.name.localeCompare(b.name)
+  };
+
   function render() {
     const visible = state.movies.filter(matchesFilter);
     fillSection('trending-row', visible.filter(m => m.trending), trendingCard);
-    fillSection('top-grid', visible.filter(m => m.top), gridCard);
-    fillSection('popular-grid', visible.filter(m => m.popular), gridCard);
-    fillSection('all-grid', visible, gridCard);
+    // Top reyting — reyting bo'yicha, Mashhur — yangilik bo'yicha
+    fillSection('top-grid', visible.filter(m => m.top).sort(SORTERS.rating), gridCard);
+    fillSection('popular-grid', visible.filter(m => m.popular).sort(SORTERS.new), gridCard);
+    // Barcha kinolar — tanlangan saralash bo'yicha (standart: yangi -> eski)
+    fillSection('all-grid', [...visible].sort(SORTERS[state.sort] || SORTERS.new), gridCard);
   }
 
   // ---------------------------------------------------------------------
@@ -381,6 +438,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // Saralash chiplari ("Barcha kinolar" bo'limi uchun)
+  document.querySelectorAll('.sort-chips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      state.sort = chip.dataset.sort;
+      document.querySelectorAll('.sort-chips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      render();
+    });
+  });
+
   // ---------------------------------------------------------------------
   // Boshlang'ich yuklash
   // ---------------------------------------------------------------------
@@ -396,6 +463,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.purchases = new Set(purchases.owned);
     state.pending = new Set(purchases.pending);
     render();
+
+    // Profil sahifasidan "#movie-ID" bilan kelingan bo'lsa — o'sha kinoni ochamiz
+    const hashMatch = location.hash.match(/^#movie-(\d+)$/);
+    if (hashMatch) {
+      const target = state.movies.find(m => m.id === Number(hashMatch[1]));
+      history.replaceState(null, '', location.pathname); // hash qayta ochilmasin
+      if (target) openModal(target);
+    }
   } catch (err) {
     document.getElementById('all-grid').innerHTML =
       `<p class="empty-msg">${err.message}</p>`;

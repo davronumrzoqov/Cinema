@@ -57,13 +57,9 @@
         </a>
       </div>
 
-      <button type="button" class="sidebar-avatar" id="logout-btn" title="Chiqish" aria-label="Chiqish">
-        <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle cx="20" cy="20" r="20" fill="#5A698F" />
-          <circle cx="20" cy="16" r="7" fill="#161D2F" />
-          <path d="M6 38C6 29 12 24 20 24C28 24 34 29 34 38" fill="#161D2F" />
-        </svg>
-      </button>
+      <a href="profile.html" class="sidebar-avatar" id="profile-link" title="Profilim" aria-label="Profilim">
+        <span id="avatar-initial" class="avatar-initial" aria-hidden="true">•</span>
+      </a>
     </nav>
 
     <main class="content">
@@ -91,7 +87,15 @@
       </section>
 
       <section aria-labelledby="all-heading">
-        <h2 id="all-heading" class="section-title">Barcha kinolar</h2>
+        <div class="section-head">
+          <h2 id="all-heading" class="section-title">Barcha kinolar</h2>
+          <div class="sort-chips" role="group" aria-label="Saralash">
+            <button type="button" class="chip active" data-sort="new">Yangi → Eski</button>
+            <button type="button" class="chip" data-sort="old">Eski → Yangi</button>
+            <button type="button" class="chip" data-sort="rating">★ Reyting</button>
+            <button type="button" class="chip" data-sort="name">A–Z</button>
+          </div>
+        </div>
         <div id="all-grid" class="card-grid"></div>
       </section>
     </main>

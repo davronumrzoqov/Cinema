@@ -49,6 +49,8 @@ const Api = (() => {
     googleConfig: () => request('/api/auth/google/config'),
     googleLogin: (credential) => request('/api/auth/google', { method: 'POST', body: { credential } }),
     me: () => request('/api/auth/me', { authRequired: true }),
+    profile: () => request('/api/profile', { authRequired: true }),
+    changePassword: (current, next) => request('/api/profile/password', { method: 'PUT', body: { current, next }, authRequired: true }),
 
     movies: () => request('/api/movies'),
     adminMovies: () => request('/api/admin/movies', { authRequired: true }),
@@ -63,12 +65,20 @@ const Api = (() => {
     purchases: () => request('/api/purchases', { authRequired: true }),
     paymentCard: () => request('/api/payment-card', { authRequired: true }),
     purchase: (movieId, payerNote) => request(`/api/purchases/${movieId}`, { method: 'POST', body: { payerNote }, authRequired: true }),
+    paymeConfig: () => request('/api/payme/config'),
+    payWithPayme: (movieId) => request(`/api/purchases/${movieId}/payme`, { method: 'POST', authRequired: true }),
 
+    adminStats: () => request('/api/admin/stats', { authRequired: true }),
     adminPurchases: () => request('/api/admin/purchases', { authRequired: true }),
     approvePurchase: (id) => request(`/api/admin/purchases/${id}/approve`, { method: 'POST', authRequired: true }),
     rejectPurchase: (id) => request(`/api/admin/purchases/${id}/reject`, { method: 'POST', authRequired: true }),
     adminSettings: () => request('/api/admin/settings', { authRequired: true }),
-    saveSettings: (settings) => request('/api/admin/settings', { method: 'PUT', body: settings, authRequired: true })
+    saveSettings: (settings) => request('/api/admin/settings', { method: 'PUT', body: settings, authRequired: true }),
+
+    adminUsers: () => request('/api/admin/users', { authRequired: true }),
+    setUserRole: (id, role) => request(`/api/admin/users/${id}/role`, { method: 'PUT', body: { role }, authRequired: true }),
+    deleteUser: (id) => request(`/api/admin/users/${id}`, { method: 'DELETE', authRequired: true }),
+    resetUserPassword: (id, password) => request(`/api/admin/users/${id}/password`, { method: 'PUT', body: { password }, authRequired: true })
   };
 })();
 

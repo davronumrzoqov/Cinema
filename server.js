@@ -13,6 +13,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const { movies: seedMovies } = require('./seed');
+const { createPaymeHandler, buildCheckoutUrl } = require('./payme');
 
 // ---------------------------------------------------------------------------
 // Konfiguratsiya
@@ -32,6 +33,12 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 // Karta raqami kodda saqlanmaydi — db.json (gitignore'da) ichida turadi.
 const PAYMENT_CARD_NUMBER = process.env.PAYMENT_CARD_NUMBER || '';
 const PAYMENT_CARD_OWNER = process.env.PAYMENT_CARD_OWNER || '';
+
+// Payme (avtomatik to'lov) — Payme kabinetdan olinadi. Bo'sh bo'lsa Payme o'chiq.
+const PAYME_MERCHANT_ID = process.env.PAYME_MERCHANT_ID || '';
+const PAYME_KEY = process.env.PAYME_KEY || '';
+// Saytning tashqi manzili (Payme'dan qaytish uchun). Masalan: https://cinema.onrender.com
+const PUBLIC_URL = process.env.PUBLIC_URL || '';
 
 const DEFAULT_ADMIN = {
   email: process.env.ADMIN_EMAIL || 'admin@cinema.uz',
@@ -65,6 +72,7 @@ function initDB() {
   db.movies = db.movies || [];
   db.bookmarks = db.bookmarks || [];
   db.purchases = db.purchases || [];
+  db.paymeTransactions = db.paymeTransactions || [];
   db.settings = db.settings || {};
 
   // To'lov kartasi: env'da berilgan bo'lsa yangilanadi, bo'lmasa mavjudi qoladi
@@ -73,8 +81,9 @@ function initDB() {
   db.settings.cardNumber = db.settings.cardNumber || '';
   db.settings.cardOwner = db.settings.cardOwner || '';
 
-  // Eski sxemadagi db.json (poster/trailer maydonlari yo'q) yangi katalog bilan almashtiriladi
-  const outdated = db.movies.length > 0 && (!db.movies[0].poster || db.movies[0].trailer === undefined);
+  // Eski sxemadagi db.json (poster/trailer/rating maydonlari yo'q) yangi katalog bilan almashtiriladi
+  const outdated = db.movies.length > 0
+    && (!db.movies[0].poster || db.movies[0].trailer === undefined || db.movies[0].rating === undefined);
   if (db.movies.length === 0 || outdated) {
     db.movies = seedMovies;
     db.bookmarks = db.bookmarks.filter(b => typeof b.movieId === 'number');
@@ -149,6 +158,7 @@ function validateMovie(body) {
   const trailer = String(body.trailer || '').trim();
   const year = Number(body.year);
   const price = body.price === undefined || body.price === '' ? 0 : Number(body.price);
+  const rating = body.rating === undefined || body.rating === '' ? 0 : Number(body.rating);
 
   if (!name) return { error: 'Kino nomi kiritilishi shart' };
   if (!VALID_GENRES.has(genre)) return { error: "Turi 'Movie' yoki 'TV Series' bo'lishi kerak" };
@@ -161,6 +171,9 @@ function validateMovie(body) {
     return { error: 'Treyler — YouTube video ID bo\'lishi kerak (masalan: YoHD9XEInc0)' };
   }
   if (!Number.isFinite(price) || price < 0) return { error: 'Narx manfiy bo\'lmagan son bo\'lishi kerak' };
+  if (!Number.isFinite(rating) || rating < 0 || rating > 10) {
+    return { error: 'Reyting 0–10 oralig\'ida bo\'lishi kerak' };
+  }
 
   return {
     movie: {
@@ -170,6 +183,7 @@ function validateMovie(body) {
       limit,
       poster,
       trailer,
+      rating: Math.round(rating * 10) / 10,
       price: Math.round(price * 100) / 100,
       trending: !!body.trending,
       top: !!body.top,
@@ -269,6 +283,50 @@ app.post('/api/auth/google', wrap(async (req, res) => {
 app.get('/api/auth/me', auth, (req, res) => {
   res.json({ id: req.user.id, email: req.user.email, role: req.user.role });
 });
+
+// ---------------------------------------------------------------------------
+// Profil API — foydalanuvchi o'z sahifasida ko'radigan ma'lumotlar
+// ---------------------------------------------------------------------------
+
+app.get('/api/profile', auth, (req, res) => {
+  const db = readDB();
+  const user = db.users.find(u => u.id === req.user.id);
+  if (!user) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+
+  const mine = db.purchases.filter(p => p.userId === user.id);
+  res.json({
+    id: user.id,
+    email: user.email,
+    name: user.name || '',
+    role: user.role,
+    provider: user.provider || 'email',
+    bookmarkCount: db.bookmarks.filter(b => b.userId === user.id).length,
+    ownedCount: mine.filter(p => p.status === 'approved').length,
+    pendingCount: mine.filter(p => p.status === 'pending').length,
+    totalSpent: mine.filter(p => p.status === 'approved').reduce((s, p) => s + (p.price || 0), 0)
+  });
+});
+
+// Foydalanuvchi o'z parolini o'zgartiradi (joriy parol tekshiriladi)
+app.put('/api/profile/password', auth, wrap(async (req, res) => {
+  const current = String(req.body?.current || '');
+  const next = String(req.body?.next || '');
+  if (next.length < 6) return res.status(400).json({ error: 'Yangi parol kamida 6 belgidan iborat bo\'lishi kerak' });
+
+  const db = readDB();
+  const user = db.users.find(u => u.id === req.user.id);
+  if (!user) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+  if (!user.password) {
+    return res.status(400).json({ error: 'Siz Google orqali kirgansiz — parol Google hisobingizda boshqariladi' });
+  }
+  if (!(await bcrypt.compare(current, user.password))) {
+    return res.status(401).json({ error: 'Joriy parol noto\'g\'ri' });
+  }
+
+  user.password = await bcrypt.hash(next, 10);
+  writeDB(db);
+  res.json({ ok: true });
+}));
 
 // ---------------------------------------------------------------------------
 // Movies API
@@ -459,6 +517,174 @@ app.post('/api/admin/purchases/:id/reject', auth, adminOnly, (req, res) => {
   purchase.status = 'rejected';
   writeDB(db);
   res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Admin: foydalanuvchilarni boshqarish
+// ---------------------------------------------------------------------------
+
+// Barcha foydalanuvchilar ro'yxati (parolsiz) + har birining xarid statistikasi
+app.get('/api/admin/users', auth, adminOnly, (req, res) => {
+  const db = readDB();
+  const users = db.users.map(u => {
+    const purchases = db.purchases.filter(p => p.userId === u.id && p.status === 'approved');
+    return {
+      id: u.id,
+      email: u.email,
+      role: u.role,
+      provider: u.provider || 'email',
+      name: u.name || '',
+      purchaseCount: purchases.length,
+      totalSpent: purchases.reduce((s, p) => s + (p.price || 0), 0),
+      bookmarkCount: db.bookmarks.filter(b => b.userId === u.id).length
+    };
+  });
+  res.json(users);
+});
+
+// Rolni o'zgartirish: user <-> admin
+app.put('/api/admin/users/:id/role', auth, adminOnly, (req, res) => {
+  const id = Number(req.params.id);
+  const role = String(req.body?.role || '');
+  if (!['admin', 'user'].includes(role)) {
+    return res.status(400).json({ error: "Rol 'admin' yoki 'user' bo'lishi kerak" });
+  }
+
+  const db = readDB();
+  const user = db.users.find(u => u.id === id);
+  if (!user) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+  if (user.id === req.user.id && role !== 'admin') {
+    return res.status(400).json({ error: 'O\'zingizni adminlikdan olib tashlay olmaysiz' });
+  }
+
+  user.role = role;
+  writeDB(db);
+  res.json({ ok: true, role });
+});
+
+// Foydalanuvchini o'chirish (o'zini o'chirish taqiqlanadi)
+app.delete('/api/admin/users/:id', auth, adminOnly, (req, res) => {
+  const id = Number(req.params.id);
+  if (id === req.user.id) return res.status(400).json({ error: 'O\'zingizni o\'chira olmaysiz' });
+
+  const db = readDB();
+  const before = db.users.length;
+  db.users = db.users.filter(u => u.id !== id);
+  if (db.users.length === before) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+
+  // Bog'liq ma'lumotlar ham tozalanadi
+  db.bookmarks = db.bookmarks.filter(b => b.userId !== id);
+  db.purchases = db.purchases.filter(p => p.userId !== id);
+  writeDB(db);
+  res.json({ ok: true });
+});
+
+// Foydalanuvchi parolini tiklash (yangi parol berish)
+app.put('/api/admin/users/:id/password', auth, adminOnly, wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  const password = String(req.body?.password || '');
+  if (password.length < 6) return res.status(400).json({ error: 'Parol kamida 6 belgidan iborat bo\'lishi kerak' });
+
+  const db = readDB();
+  const user = db.users.find(u => u.id === id);
+  if (!user) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+
+  user.password = await bcrypt.hash(password, 10);
+  writeDB(db);
+  res.json({ ok: true });
+}));
+
+// ---------------------------------------------------------------------------
+// Payme — avtomatik to'lov
+// ---------------------------------------------------------------------------
+
+const PAYME_ENABLED = !!(PAYME_MERCHANT_ID && PAYME_KEY);
+
+// Frontend Payme yoqilganini shu orqali biladi
+app.get('/api/payme/config', (req, res) => {
+  res.json({ enabled: PAYME_ENABLED });
+});
+
+// Payme orqali to'lash: kutilayotgan xarid yaratiladi va checkout havolasi qaytadi
+app.post('/api/purchases/:movieId/payme', auth, (req, res) => {
+  if (!PAYME_ENABLED) return res.status(501).json({ error: 'Payme sozlanmagan' });
+
+  const movieId = Number(req.params.movieId);
+  const db = readDB();
+  const movie = db.movies.find(m => m.id === movieId);
+  if (!movie) return res.status(404).json({ error: 'Kino topilmadi' });
+  if (!movie.price) return res.status(400).json({ error: 'Bu kino bepul' });
+
+  const existing = db.purchases.find(p => p.userId === req.user.id && p.movieId === movieId);
+  if (existing?.status === 'approved') return res.status(409).json({ error: 'Bu kino allaqachon sotib olingan' });
+
+  // Faol (pending) xaridni qayta ishlatamiz, aks holda yangisini ochamiz
+  let purchase = existing && existing.status === 'pending' ? existing : null;
+  if (!purchase) {
+    db.purchases = db.purchases.filter(p => !(p.userId === req.user.id && p.movieId === movieId));
+    purchase = {
+      id: Date.now(),
+      userId: req.user.id,
+      userEmail: req.user.email,
+      movieId,
+      price: movie.price,
+      status: 'pending',
+      method: 'payme',
+      date: new Date().toISOString()
+    };
+    db.purchases.push(purchase);
+    writeDB(db);
+  }
+
+  const checkoutUrl = buildCheckoutUrl({
+    merchantId: PAYME_MERCHANT_ID,
+    orderId: purchase.id,
+    amountSom: movie.price,
+    returnUrl: PUBLIC_URL ? `${PUBLIC_URL}/main.html` : ''
+  });
+
+  res.json({ url: checkoutUrl });
+});
+
+// Payme serveri chaqiradigan webhook (JSON-RPC). Auth Payme kaliti orqali.
+if (PAYME_ENABLED) {
+  const paymeHandler = createPaymeHandler({ readDB, writeDB, merchantKey: PAYME_KEY });
+  app.post('/api/payme', paymeHandler);
+}
+
+// --- Admin: daromad statistikasi -------------------------------------------
+// Jami daromad, bu oylik daromad, kutilayotgan pul va sotuvlar soni.
+app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
+  const db = readDB();
+  const approved = db.purchases.filter(p => p.status === 'approved');
+  const pending = db.purchases.filter(p => p.status === 'pending');
+
+  const now = new Date();
+  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // Tasdiqlangan sana (approvedAt) yo'q eski yozuvlar uchun date'ga qaytamiz
+  const monthRevenue = approved
+    .filter(p => (p.approvedAt || p.date || '').startsWith(monthPrefix))
+    .reduce((sum, p) => sum + (p.price || 0), 0);
+
+  // Eng ko'p daromad keltirgan kinolar (top 5)
+  const byMovie = {};
+  approved.forEach(p => {
+    const name = db.movies.find(m => m.id === p.movieId)?.name || `#${p.movieId}`;
+    if (!byMovie[name]) byMovie[name] = { name, count: 0, revenue: 0 };
+    byMovie[name].count += 1;
+    byMovie[name].revenue += p.price || 0;
+  });
+  const topMovies = Object.values(byMovie).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+  res.json({
+    totalRevenue: approved.reduce((sum, p) => sum + (p.price || 0), 0),
+    monthRevenue,
+    pendingRevenue: pending.reduce((sum, p) => sum + (p.price || 0), 0),
+    salesCount: approved.length,
+    pendingCount: pending.length,
+    paidMovies: db.movies.filter(m => m.price > 0).length,
+    topMovies
+  });
 });
 
 // --- Admin: to'lov kartasi sozlamalari -------------------------------------
