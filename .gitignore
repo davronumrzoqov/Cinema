@@ -1,0 +1,19 @@
+# Bog'liqliklar
+node_modules/
+
+# Lokal ma'lumotlar bazasi (server o'zi yaratadi)
+db.json
+
+# Muhit o'zgaruvchilari
+.env
+.env.local
+
+# OS / muharrir fayllari
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Loglar
+*.log
+npm-debug.log*

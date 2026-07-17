@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Trend, top va mashhur filmlar hamda seriallar">
+  <title>Cinema — Filmlar va seriallar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Asosiy navigatsiya">
+      <a href="main.html" class="sidebar-logo" aria-label="Cinema bosh sahifa">
+        <svg width="33" height="26" viewBox="0 0 33 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M4 0L9 8H4L0 0H4Z" fill="#FC4747" />
+          <path d="M12.5 0L17.5 8H12.5L8.5 0H12.5Z" fill="#FC4747" />
+          <path d="M21 0L26 8H21L17 0H21Z" fill="#FC4747" />
+          <path d="M29.5 0L33 8H29.5L26.5 0H29.5Z" fill="#FC4747" />
+          <rect y="18" width="33" height="8" rx="2" fill="#FC4747" />
+        </svg>
+      </a>
+
+      <div class="sidebar-nav">
+        <a href="main.html" class="nav-icon active" title="Bosh sahifa" aria-label="Bosh sahifa">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 8.5L10 1L18 8.5V19H12V13H8V19H2V8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+          </svg>
+        </a>
+        <button type="button" class="nav-icon" id="filter-movies" title="Faqat filmlar" aria-label="Faqat filmlar">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="1" width="18" height="14" rx="1.5" stroke="currentColor" stroke-width="1.6" />
+            <path d="M6 1V15M14 1V15M1 6H6M14 6H19M1 10H6M14 10H19" stroke="currentColor" stroke-width="1.2" />
+            <path d="M0 18H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </button>
+        <button type="button" class="nav-icon" id="filter-series" title="Faqat seriallar" aria-label="Faqat seriallar">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="3" width="18" height="12" rx="1.5" stroke="currentColor" stroke-width="1.6" />
+            <path d="M7 18H13M10 15V18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </button>
+        <button type="button" class="nav-icon" id="filter-bookmarks" title="Saqlanganlar" aria-label="Saqlanganlar">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 1H16V19L10 14.5L4 19V1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <a href="admin.html" class="nav-icon hidden" id="admin-link" title="Admin panel" aria-label="Admin panel">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.6" />
+            <path d="M10 1V3.2M10 16.8V19M19 10H16.8M3.2 10H1M16.24 3.76L14.67 5.33M5.33 14.67L3.76 16.24M16.24 16.24L14.67 14.67M5.33 5.33L3.76 3.76" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </a>
+      </div>
+
+      <button type="button" class="sidebar-avatar" id="logout-btn" title="Chiqish" aria-label="Chiqish">
+        <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="20" cy="20" r="20" fill="#5A698F" />
+          <circle cx="20" cy="16" r="7" fill="#161D2F" />
+          <path d="M6 38C6 29 12 24 20 24C28 24 34 29 34 38" fill="#161D2F" />
+        </svg>
+      </button>
+    </nav>
+
+    <main class="content">
+      <div class="searchbar">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="13.5" cy="13.5" r="9" stroke="white" stroke-width="2.2" />
+          <line x1="20.2" y1="20.2" x2="27.5" y2="27.5" stroke="white" stroke-width="2.2" stroke-linecap="round" />
+        </svg>
+        <input type="search" id="search-input" placeholder="Film yoki serial qidiring…" aria-label="Qidiruv" autocomplete="off">
+      </div>
+
+      <section aria-labelledby="trending-heading">
+        <h2 id="trending-heading" class="section-title">Trend</h2>
+        <div id="trending-row" class="trending-row" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="top-heading">
+        <h2 id="top-heading" class="section-title">Top reyting</h2>
+        <div id="top-grid" class="card-grid"></div>
+      </section>
+
+      <section aria-labelledby="popular-heading">
+        <h2 id="popular-heading" class="section-title">Mashhur</h2>
+        <div id="popular-grid" class="card-grid"></div>
+      </section>
+
+      <section aria-labelledby="all-heading">
+        <h2 id="all-heading" class="section-title">Barcha kinolar</h2>
+        <div id="all-grid" class="card-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Ko'rish modali -->
+  <div id="watch-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <button type="button" class="modal-close" id="modal-close" aria-label="Yopish">✕</button>
+      <div id="modal-player" class="modal-player"></div>
+      <div class="modal-body">
+        <h3 id="modal-title"></h3>
+        <p id="modal-meta" class="card-meta"></p>
+        <div id="modal-actions" class="modal-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/api.js"></script>
+  <script src="./js/app.js" defer></script>
+</body>
+
+</html>

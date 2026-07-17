@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cinema — filmlar va seriallar dunyosi">
+  <title>Cinema — Kirish</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body class="auth-body">
+  <main class="auth-container">
+    <div class="auth-logo" aria-hidden="true">
+      <svg width="40" height="32" viewBox="0 0 33 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 0L9 8H4L0 0H4Z" fill="#FC4747" />
+        <path d="M12.5 0L17.5 8H12.5L8.5 0H12.5Z" fill="#FC4747" />
+        <path d="M21 0L26 8H21L17 0H21Z" fill="#FC4747" />
+        <path d="M29.5 0L33 8H29.5L26.5 0H29.5Z" fill="#FC4747" />
+        <rect y="18" width="33" height="8" rx="2" fill="#FC4747" />
+      </svg>
+      <span>Cinema</span>
+    </div>
+
+    <!-- Kirish -->
+    <section id="login-box" class="auth-card" aria-labelledby="login-title">
+      <h1 id="login-title">Kirish</h1>
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="siz@misol.uz" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="login-password">Parol</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <p id="login-error" class="form-error" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-block">Kirish</button>
+      </form>
+      <div class="google-slot">
+        <div class="divider"><span>yoki</span></div>
+        <div id="google-btn-login" class="google-btn-host"></div>
+      </div>
+      <p class="auth-switch">Akkauntingiz yo'qmi?
+        <button type="button" class="link-btn" id="show-signup">Ro'yxatdan o'tish</button>
+      </p>
+      <p class="demo-hint">Admin demo: <strong>admin@cinema.uz</strong> / <strong>Admin123!</strong></p>
+    </section>
+
+    <!-- Ro'yxatdan o'tish -->
+    <section id="signup-box" class="auth-card hidden" aria-labelledby="signup-title">
+      <h1 id="signup-title">Ro'yxatdan o'tish</h1>
+      <form id="signup-form" novalidate>
+        <div class="field">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" placeholder="siz@misol.uz" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="signup-password">Parol</label>
+          <input type="password" id="signup-password" placeholder="Kamida 6 belgi" autocomplete="new-password" required>
+        </div>
+        <div class="field">
+          <label for="signup-confirm">Parolni takrorlang</label>
+          <input type="password" id="signup-confirm" placeholder="••••••••" autocomplete="new-password" required>
+        </div>
+        <p id="signup-error" class="form-error" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-block">Akkaunt yaratish</button>
+      </form>
+      <div class="google-slot">
+        <div class="divider"><span>yoki</span></div>
+        <div id="google-btn-signup" class="google-btn-host"></div>
+      </div>
+      <p class="auth-switch">Akkauntingiz bormi?
+        <button type="button" class="link-btn" id="show-login">Kirish</button>
+      </p>
+    </section>
+  </main>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/auth.js" defer></script>
+</body>
+
+</html>

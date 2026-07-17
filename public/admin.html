@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cinema — Admin panel</title>
+  <meta name="description" content="Admin: kinolarni boshqarish">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body>
+  <main class="admin-page">
+    <header class="admin-header">
+      <h1>Admin panel</h1>
+      <a href="main.html" class="link-btn">← Kinolarga qaytish</a>
+    </header>
+
+    <p id="guard-msg" class="form-error" role="alert"></p>
+
+    <div id="admin-content" class="hidden">
+      <section class="panel" aria-labelledby="form-heading">
+        <h2 id="form-heading" class="panel-title">Yangi kino qo'shish</h2>
+        <form id="movie-form" class="movie-form" novalidate>
+          <input type="hidden" id="m-id">
+
+          <div class="form-grid">
+            <div class="field field-wide">
+              <label for="m-name">Kino nomi</label>
+              <input type="text" id="m-name" placeholder="Masalan: Interstellar" required>
+            </div>
+            <div class="field">
+              <label for="m-genre">Turi</label>
+              <select id="m-genre">
+                <option value="Movie">Movie</option>
+                <option value="TV Series">TV Series</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="m-year">Yil</label>
+              <input type="number" id="m-year" placeholder="2024" min="1888" required>
+            </div>
+            <div class="field">
+              <label for="m-limit">Yosh chegarasi</label>
+              <select id="m-limit">
+                <option value="G">G</option>
+                <option value="PG">PG</option>
+                <option value="PG-13" selected>PG-13</option>
+                <option value="18+">18+</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="m-price">Narx ($) — 0 = bepul</label>
+              <input type="number" id="m-price" min="0" step="0.01" value="0">
+            </div>
+            <div class="field field-wide">
+              <label for="m-poster">Poster rasm URL</label>
+              <input type="url" id="m-poster" placeholder="https://…" required>
+            </div>
+            <div class="field field-wide">
+              <label for="m-trailer">YouTube treyler ID (ixtiyoriy)</label>
+              <input type="text" id="m-trailer" placeholder="Masalan: YoHD9XEInc0">
+            </div>
+          </div>
+
+          <div class="checkbox-row">
+            <label><input type="checkbox" id="m-trending"> Trend</label>
+            <label><input type="checkbox" id="m-top"> Top reyting</label>
+            <label><input type="checkbox" id="m-popular"> Mashhur</label>
+          </div>
+
+          <p id="form-error" class="form-error" role="alert"></p>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submit-btn">Kino qo'shish</button>
+            <button type="button" class="btn btn-ghost hidden" id="cancel-edit">Bekor qilish</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="list-heading">
+        <h2 id="list-heading" class="panel-title">Barcha kinolar (<span id="movie-count">0</span>)</h2>
+        <div class="table-tools">
+          <input type="search" id="admin-search" placeholder="Ro'yxatdan qidirish…" aria-label="Ro'yxatdan qidirish">
+        </div>
+        <div id="movie-list" class="movie-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="./js/api.js"></script>
+  <script src="./js/admin.js" defer></script>
+</body>
+
+</html>

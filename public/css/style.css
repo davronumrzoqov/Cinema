@@ -1,0 +1,1125 @@
+/* ==========================================================================
+   Cinema — dizayn tizimi
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --font: 'Outfit', system-ui, sans-serif;
+
+    /* Ranglar */
+    --bg: #10141E;
+    --surface: #161D2F;
+    --surface-2: #1c2438;
+    --line: #2c3752;
+    --text: #FFFFFF;
+    --text-dim: #8394B0;
+    --accent: #FC4747;
+    --accent-hover: #e33b3b;
+    --blue: #5A698F;
+    --link: #58a6ff;
+    --success: #2ecc71;
+
+    /* O'lchamlar */
+    --radius: 10px;
+    --radius-sm: 6px;
+    --sidebar-w: 96px;
+
+    /* Animatsiya */
+    --ease: cubic-bezier(.22, .8, .36, 1);
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+button {
+    font-family: inherit;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Umumiy komponentlar
+   ========================================================================== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 22px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .25s var(--ease), transform .15s var(--ease), opacity .2s;
+}
+
+.btn:active {
+    transform: scale(.97);
+}
+
+.btn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+}
+
+.btn-ghost:hover:not(:disabled) {
+    color: var(--text);
+    border-color: var(--blue);
+}
+
+.btn-danger {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-sm {
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, .4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--link);
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.link-btn:hover {
+    color: #82bfff;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+    text-align: left;
+}
+
+.field label {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.field input,
+.field select {
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    transition: border-color .25s;
+}
+
+.field input::placeholder {
+    color: #55648a;
+}
+
+.field input:focus,
+.field select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.form-error {
+    color: var(--accent);
+    font-size: 13px;
+    min-height: 18px;
+    margin: 4px 0 8px;
+}
+
+.empty-msg {
+    color: var(--text-dim);
+    font-size: 15px;
+    padding: 24px 0;
+}
+
+/* Toast xabarnomalar */
+
+#toast-host {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+}
+
+.toast {
+    padding: 12px 18px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+    animation: toastIn .3s var(--ease);
+}
+
+.toast-success { border-color: var(--success); }
+.toast-error { border-color: var(--accent); }
+
+.toast-out {
+    animation: toastOut .35s var(--ease) forwards;
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastOut {
+    to { opacity: 0; transform: translateY(8px); }
+}
+
+/* ==========================================================================
+   Auth sahifasi
+   ========================================================================== */
+
+.auth-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 36px;
+}
+
+.auth-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    animation: fadeDown .6s var(--ease);
+}
+
+.auth-card {
+    width: 100%;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 36px;
+    animation: fadeUp .55s var(--ease);
+}
+
+.auth-card h1 {
+    font-size: 28px;
+    font-weight: 500;
+    margin-bottom: 28px;
+}
+
+.auth-switch {
+    margin-top: 20px;
+    font-size: 14px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+.demo-hint {
+    margin-top: 18px;
+    padding: 10px 14px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+.demo-hint strong {
+    color: #C4CFDE;
+    font-weight: 600;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   Bosh sahifa — layout
+   ========================================================================== */
+
+.layout {
+    display: flex;
+    align-items: flex-start;
+    min-height: 100vh;
+    gap: 8px;
+}
+
+.sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: sticky;
+    top: 12px;
+    height: calc(100vh - 24px);
+    margin: 12px 0 12px 24px;
+    background: var(--surface);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 0;
+}
+
+.sidebar-logo {
+    display: block;
+    transition: transform .3s var(--ease);
+}
+
+.sidebar-logo:hover {
+    transform: scale(1.1);
+}
+
+.sidebar-nav {
+    margin-top: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.nav-icon {
+    background: none;
+    border: none;
+    padding: 4px;
+    color: var(--blue);
+    cursor: pointer;
+    display: flex;
+    transition: color .25s, transform .25s var(--ease);
+}
+
+.nav-icon:hover {
+    color: var(--text);
+    transform: scale(1.18);
+}
+
+.nav-icon.active {
+    color: var(--accent);
+}
+
+.sidebar-avatar {
+    margin-top: auto;
+    background: none;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    padding: 0;
+    line-height: 0;
+    cursor: pointer;
+    transition: border-color .25s, transform .25s var(--ease);
+}
+
+.sidebar-avatar:hover {
+    border-color: var(--text);
+    transform: scale(1.06);
+}
+
+.content {
+    flex: 1;
+    min-width: 0;
+    padding: 28px 32px 64px 16px;
+}
+
+/* Qidiruv */
+
+.searchbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 8px;
+}
+
+.searchbar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    padding: 8px 0;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 22px;
+    caret-color: var(--accent);
+    transition: border-color .3s;
+}
+
+.searchbar input::placeholder {
+    color: #55648a;
+}
+
+.searchbar input:focus {
+    outline: none;
+    border-bottom-color: var(--blue);
+}
+
+.section-title {
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -.4px;
+    margin: 36px 0 22px;
+}
+
+/* ==========================================================================
+   Kartalar
+   ========================================================================== */
+
+.poster-wrap {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface-2);
+}
+
+.poster-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .45s var(--ease), filter .45s;
+}
+
+/* Shimmer — rasm yuklanguncha */
+
+.shimmer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .06) 50%, transparent 70%);
+    background-size: 250% 100%;
+    animation: shimmerMove 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmerMove {
+    0% { background-position: 200% 0; }
+    100% { background-position: -100% 0; }
+}
+
+/* Narx belgisi */
+
+.badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 3;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
+}
+
+.badge-free {
+    background: var(--success);
+    color: #063d1c;
+}
+
+.badge-paid {
+    background: var(--accent);
+    color: white;
+}
+
+.badge-owned {
+    background: var(--blue);
+    color: white;
+}
+
+/* Saqlash tugmasi */
+
+.bookmark-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(16, 20, 30, .55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .25s, transform .2s var(--ease);
+}
+
+.bookmark-btn:hover {
+    background: rgba(16, 20, 30, .85);
+    transform: scale(1.12);
+}
+
+.bookmark-btn.active {
+    background: var(--accent);
+}
+
+/* Trend qatori */
+
+.trending-row {
+    display: flex;
+    gap: 32px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    scroll-snap-type: x mandatory;
+}
+
+.trending-row::-webkit-scrollbar {
+    height: 6px;
+}
+
+.trending-row::-webkit-scrollbar-thumb {
+    background: var(--blue);
+    border-radius: 3px;
+}
+
+.trending-row::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.trending-card {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+}
+
+.trending-poster {
+    width: 440px;
+    height: 220px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.trending-poster:hover img {
+    transform: scale(1.05);
+    filter: brightness(.45);
+}
+
+.trending-info {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    padding: 20px 22px;
+    background: linear-gradient(transparent, rgba(6, 9, 16, .85));
+}
+
+.trending-info h3 {
+    font-size: 22px;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+/* Play tugmasi */
+
+.play-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(.9);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 22px 9px 10px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .28);
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0;
+    backdrop-filter: blur(4px);
+    transition: opacity .3s, transform .3s var(--ease), background .25s;
+}
+
+.play-btn:hover {
+    background: rgba(255, 255, 255, .42);
+}
+
+.trending-poster:hover .play-btn {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Kartalar to'ri */
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 28px;
+}
+
+.grid-card {
+    cursor: default;
+    transition: transform .3s var(--ease);
+}
+
+.grid-card:hover {
+    transform: translateY(-6px);
+}
+
+.grid-poster {
+    aspect-ratio: 16 / 10;
+    margin-bottom: 12px;
+}
+
+.grid-card:hover .grid-poster img {
+    transform: scale(1.06);
+}
+
+.card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.card-meta .dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--text-dim);
+}
+
+.card-title {
+    font-size: 17px;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+/* Grid kartadagi play belgisi */
+
+.grid-card {
+    cursor: pointer;
+}
+
+.grid-play-hint {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 9, 16, .35);
+    opacity: 0;
+    transition: opacity .3s;
+}
+
+.grid-card:hover .grid-play-hint,
+.grid-card:focus-visible .grid-play-hint {
+    opacity: 1;
+}
+
+.grid-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: var(--radius);
+}
+
+/* Scroll-reveal */
+
+.reveal {
+    opacity: 0;
+}
+
+.reveal.in-view {
+    animation: fadeUp .5s var(--ease) both;
+}
+
+/* ==========================================================================
+   Ko'rish modali
+   ========================================================================== */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(6, 9, 16, .82);
+    backdrop-filter: blur(6px);
+    animation: fadeIn .25s var(--ease);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal {
+    position: relative;
+    width: 100%;
+    max-width: 860px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    animation: modalIn .35s var(--ease);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .6);
+}
+
+@keyframes modalIn {
+    from { opacity: 0; transform: translateY(24px) scale(.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 5;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(16, 20, 30, .7);
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .25s, transform .2s var(--ease);
+}
+
+.modal-close:hover {
+    background: var(--accent);
+    transform: scale(1.08);
+}
+
+.modal-player {
+    aspect-ratio: 16 / 9;
+    background: #000;
+    position: relative;
+}
+
+.modal-player iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+.modal-poster {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(.55);
+}
+
+.modal-body {
+    padding: 20px 26px 26px;
+}
+
+.modal-body h3 {
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.modal-actions:empty {
+    display: none;
+}
+
+.purchase-note {
+    color: var(--text-dim);
+    font-size: 15px;
+}
+
+/* Checkout (karta) formasi */
+
+.checkout {
+    width: 100%;
+}
+
+.checkout .purchase-note {
+    margin-bottom: 14px;
+}
+
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 14px;
+}
+
+.checkout .field-wide {
+    grid-column: 1 / -1;
+}
+
+/* Google tugmasi va ajratkich */
+
+.google-slot {
+    display: none;
+    margin-top: 18px;
+}
+
+.google-slot.active {
+    display: block;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 14px;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+}
+
+.google-btn-host {
+    display: flex;
+    justify-content: center;
+}
+
+/* ==========================================================================
+   Admin panel
+   ========================================================================== */
+
+.admin-page {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 44px 24px 90px;
+}
+
+.admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.admin-header h1 {
+    font-size: 30px;
+    font-weight: 500;
+}
+
+.panel {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 32px;
+    animation: fadeUp .5s var(--ease);
+}
+
+.panel-title {
+    font-size: 19px;
+    font-weight: 500;
+    margin-bottom: 20px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0 18px;
+}
+
+.field-wide {
+    grid-column: 1 / -1;
+}
+
+.checkbox-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 22px;
+    margin: 6px 0 14px;
+    font-size: 14px;
+    color: #C4CFDE;
+}
+
+.checkbox-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.checkbox-row input {
+    accent-color: var(--accent);
+    width: 15px;
+    height: 15px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.table-tools {
+    margin-bottom: 18px;
+}
+
+.table-tools input {
+    width: 100%;
+    max-width: 340px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.table-tools input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.movie-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.movie-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    animation: fadeUp .35s var(--ease) both;
+    transition: border-color .25s;
+}
+
+.movie-row:hover {
+    border-color: var(--line);
+}
+
+.movie-row-thumb {
+    width: 52px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background: var(--surface-2);
+}
+
+.movie-row-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.movie-row-info strong {
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.movie-row-info span {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.movie-row-tags {
+    color: var(--link) !important;
+}
+
+.movie-row-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 860px) {
+    .trending-poster {
+        width: 340px;
+        height: 180px;
+    }
+}
+
+@media (max-width: 700px) {
+    .layout {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+
+    .sidebar {
+        position: static;
+        width: calc(100% - 32px);
+        height: auto;
+        margin: 16px;
+        flex-direction: row;
+        padding: 14px 20px;
+        border-radius: 14px;
+    }
+
+    .sidebar-nav {
+        margin: 0 auto;
+        flex-direction: row;
+        gap: 24px;
+    }
+
+    .sidebar-avatar {
+        margin: 0;
+    }
+
+    .content {
+        padding: 8px 16px 48px;
+    }
+
+    .searchbar input {
+        font-size: 17px;
+    }
+
+    .section-title {
+        font-size: 22px;
+        margin: 28px 0 16px;
+    }
+
+    .trending-poster {
+        width: 78vw;
+        height: 44vw;
+    }
+
+    .card-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 18px;
+    }
+
+    .movie-row {
+        flex-wrap: wrap;
+    }
+
+    .movie-row-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* ==========================================================================
+   Harakat kamaytirish
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+
+    .reveal {
+        opacity: 1;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+}
