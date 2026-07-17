@@ -38,6 +38,120 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   content.classList.remove('hidden');
 
+  const fmtPrice = (p) => p ? String(p).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' so\'m' : 'Bepul';
+
+  // -------------------------------------------------------------------
+  // To'lovlar navbati
+  // -------------------------------------------------------------------
+
+  const paymentsList = document.getElementById('payments-list');
+  const pendingCount = document.getElementById('pending-count');
+
+  async function loadPayments() {
+    const payments = await Api.adminPurchases();
+    pendingCount.textContent = payments.filter(p => p.status === 'pending').length;
+    paymentsList.innerHTML = '';
+
+    if (payments.length === 0) {
+      paymentsList.innerHTML = '<p class="empty-msg">Hozircha to\'lovlar yo\'q</p>';
+      return;
+    }
+
+    payments.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'movie-row';
+
+      const statusLabel = { pending: '⏳ Kutilmoqda', approved: '✅ Tasdiqlangan', rejected: '❌ Rad etilgan' }[p.status] || p.status;
+
+      const info = document.createElement('div');
+      info.className = 'movie-row-info';
+      info.innerHTML = `
+        <strong>${p.movie} — ${fmtPrice(p.price)}</strong>
+        <span>${p.userEmail || 'foydalanuvchi #' + p.userId} · ${new Date(p.date).toLocaleString('uz-UZ')}</span>
+        ${p.payerNote ? `<span>Izoh: ${p.payerNote}</span>` : ''}
+        <span class="movie-row-tags">${statusLabel}</span>
+      `;
+
+      const actions = document.createElement('div');
+      actions.className = 'movie-row-actions';
+
+      if (p.status === 'pending') {
+        const okBtn = document.createElement('button');
+        okBtn.type = 'button';
+        okBtn.className = 'btn btn-primary btn-sm';
+        okBtn.textContent = 'Tasdiqlash';
+        okBtn.addEventListener('click', async () => {
+          okBtn.disabled = true;
+          try {
+            await Api.approvePurchase(p.id);
+            showToast('To\'lov tasdiqlandi — kino foydalanuvchiga ochildi', 'success');
+            loadPayments();
+          } catch (err) { showToast(err.message, 'error'); okBtn.disabled = false; }
+        });
+
+        const noBtn = document.createElement('button');
+        noBtn.type = 'button';
+        noBtn.className = 'btn btn-danger btn-sm';
+        noBtn.textContent = 'Rad etish';
+        noBtn.addEventListener('click', async () => {
+          noBtn.disabled = true;
+          try {
+            await Api.rejectPurchase(p.id);
+            showToast('To\'lov rad etildi', 'success');
+            loadPayments();
+          } catch (err) { showToast(err.message, 'error'); noBtn.disabled = false; }
+        });
+
+        actions.appendChild(okBtn);
+        actions.appendChild(noBtn);
+      }
+
+      row.appendChild(info);
+      row.appendChild(actions);
+      paymentsList.appendChild(row);
+    });
+  }
+
+  // Yangi to'lovlar kelganini ko'rish uchun har 15 soniyada yangilab turamiz
+  setInterval(() => loadPayments().catch(() => {}), 15000);
+
+  // -------------------------------------------------------------------
+  // To'lov kartasi sozlamalari
+  // -------------------------------------------------------------------
+
+  const settingsForm = document.getElementById('settings-form');
+  const settingsError = document.getElementById('settings-error');
+  const cardInput = document.getElementById('s-card');
+
+  cardInput.addEventListener('input', () => {
+    const digits = cardInput.value.replace(/\D/g, '').slice(0, 16);
+    cardInput.value = digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+  });
+
+  async function loadSettings() {
+    try {
+      const s = await Api.adminSettings();
+      cardInput.value = (s.cardNumber || '').replace(/(\d{4})(?=\d)/g, '$1 ');
+      document.getElementById('s-owner').value = s.cardOwner || '';
+    } catch { /* sozlamalar hali yo'q bo'lsa jim o'tamiz */ }
+  }
+
+  settingsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    settingsError.textContent = '';
+    const cardNumber = cardInput.value.replace(/\s/g, '');
+    if (cardNumber && !/^\d{16}$/.test(cardNumber)) {
+      settingsError.textContent = 'Karta raqami 16 ta raqamdan iborat bo\'lishi kerak';
+      return;
+    }
+    try {
+      await Api.saveSettings({ cardNumber, cardOwner: document.getElementById('s-owner').value.trim() });
+      showToast('To\'lov kartasi saqlandi', 'success');
+    } catch (err) {
+      settingsError.textContent = err.message;
+    }
+  });
+
   // -------------------------------------------------------------------
   // Forma holati (qo'shish / tahrirlash)
   // -------------------------------------------------------------------
@@ -166,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .filter(Boolean).join(' · ') || '—';
       info.innerHTML = `
         <strong>${movie.name}</strong>
-        <span>${movie.year} · ${movie.genre} · ${movie.limit} · ${movie.price ? '$' + movie.price.toFixed(2) : 'Bepul'}</span>
+        <span>${movie.year} · ${movie.genre} · ${movie.limit} · ${fmtPrice(movie.price)}</span>
         <span class="movie-row-tags">${tags}</span>
       `;
 
@@ -211,5 +325,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderList();
   }
 
-  await loadMovies();
+  await Promise.all([loadMovies(), loadPayments(), loadSettings()]);
 });

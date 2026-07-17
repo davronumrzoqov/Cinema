@@ -61,8 +61,14 @@ const Api = (() => {
     toggleBookmark: (movieId) => request(`/api/bookmarks/${movieId}`, { method: 'POST', authRequired: true }),
 
     purchases: () => request('/api/purchases', { authRequired: true }),
-    purchaseHistory: () => request('/api/purchases/history', { authRequired: true }),
-    purchase: (movieId, card) => request(`/api/purchases/${movieId}`, { method: 'POST', body: { card }, authRequired: true })
+    paymentCard: () => request('/api/payment-card', { authRequired: true }),
+    purchase: (movieId, payerNote) => request(`/api/purchases/${movieId}`, { method: 'POST', body: { payerNote }, authRequired: true }),
+
+    adminPurchases: () => request('/api/admin/purchases', { authRequired: true }),
+    approvePurchase: (id) => request(`/api/admin/purchases/${id}/approve`, { method: 'POST', authRequired: true }),
+    rejectPurchase: (id) => request(`/api/admin/purchases/${id}/reject`, { method: 'POST', authRequired: true }),
+    adminSettings: () => request('/api/admin/settings', { authRequired: true }),
+    saveSettings: (settings) => request('/api/admin/settings', { method: 'PUT', body: settings, authRequired: true })
   };
 })();
 

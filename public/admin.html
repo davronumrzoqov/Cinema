@@ -22,6 +22,29 @@
     <p id="guard-msg" class="form-error" role="alert"></p>
 
     <div id="admin-content" class="hidden">
+      <section class="panel" aria-labelledby="payments-heading">
+        <h2 id="payments-heading" class="panel-title">To'lovlar (<span id="pending-count">0</span> ta kutilmoqda)</h2>
+        <div id="payments-list" class="movie-list"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="settings-heading">
+        <h2 id="settings-heading" class="panel-title">To'lov kartasi (pul shu kartaga tushadi)</h2>
+        <form id="settings-form" class="movie-form" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="s-card">Karta raqami</label>
+              <input type="text" id="s-card" inputmode="numeric" placeholder="8600 0000 0000 0000" maxlength="19">
+            </div>
+            <div class="field">
+              <label for="s-owner">Karta egasi</label>
+              <input type="text" id="s-owner" placeholder="ISM FAMILIYA">
+            </div>
+          </div>
+          <p id="settings-error" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary">Saqlash</button>
+        </form>
+      </section>
+
       <section class="panel" aria-labelledby="form-heading">
         <h2 id="form-heading" class="panel-title">Yangi kino qo'shish</h2>
         <form id="movie-form" class="movie-form" novalidate>
@@ -53,8 +76,8 @@
               </select>
             </div>
             <div class="field">
-              <label for="m-price">Narx ($) — 0 = bepul</label>
-              <input type="number" id="m-price" min="0" step="0.01" value="0">
+              <label for="m-price">Narx (so'm) — 0 = bepul</label>
+              <input type="number" id="m-price" min="0" step="500" value="0">
             </div>
             <div class="field field-wide">
               <label for="m-poster">Poster rasm URL</label>

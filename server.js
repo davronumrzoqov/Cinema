@@ -28,6 +28,11 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 // Bo'sh bo'lsa, Google tugmasi frontendda ko'rsatilmaydi.
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 
+// To'lov qabul qilinadigan karta (env orqali yoki admin paneldan sozlanadi).
+// Karta raqami kodda saqlanmaydi — db.json (gitignore'da) ichida turadi.
+const PAYMENT_CARD_NUMBER = process.env.PAYMENT_CARD_NUMBER || '';
+const PAYMENT_CARD_OWNER = process.env.PAYMENT_CARD_OWNER || '';
+
 const DEFAULT_ADMIN = {
   email: process.env.ADMIN_EMAIL || 'admin@cinema.uz',
   password: process.env.ADMIN_PASSWORD || 'Admin123!'
@@ -60,6 +65,13 @@ function initDB() {
   db.movies = db.movies || [];
   db.bookmarks = db.bookmarks || [];
   db.purchases = db.purchases || [];
+  db.settings = db.settings || {};
+
+  // To'lov kartasi: env'da berilgan bo'lsa yangilanadi, bo'lmasa mavjudi qoladi
+  if (PAYMENT_CARD_NUMBER) db.settings.cardNumber = PAYMENT_CARD_NUMBER;
+  if (PAYMENT_CARD_OWNER) db.settings.cardOwner = PAYMENT_CARD_OWNER;
+  db.settings.cardNumber = db.settings.cardNumber || '';
+  db.settings.cardOwner = db.settings.cardOwner || '';
 
   // Eski sxemadagi db.json (poster/trailer maydonlari yo'q) yangi katalog bilan almashtiriladi
   const outdated = db.movies.length > 0 && (!db.movies[0].poster || db.movies[0].trailer === undefined);
@@ -67,6 +79,12 @@ function initDB() {
     db.movies = seedMovies;
     db.bookmarks = db.bookmarks.filter(b => typeof b.movieId === 'number');
   }
+
+  // Eski dollar narxlari (100 dan kichik) so'mga o'tkaziladi
+  db.movies.forEach(m => { if (m.price > 0 && m.price < 100) m.price = 13000; });
+
+  // Eski to'lovlar (status maydonisiz) tasdiqlangan deb belgilanadi
+  db.purchases.forEach(p => { if (!p.status) p.status = 'approved'; });
 
   if (!db.users.some(u => u.email === DEFAULT_ADMIN.email)) {
     db.users.push({
@@ -275,9 +293,15 @@ app.get('/api/movies/:id/watch', auth, (req, res) => {
   if (!movie) return res.status(404).json({ error: 'Kino topilmadi' });
 
   if (movie.price > 0) {
-    const owned = db.purchases.some(p => p.userId === req.user.id && p.movieId === id);
-    if (!owned) {
-      return res.status(402).json({ error: 'Bu kino pullik — avval sotib oling', price: movie.price });
+    const purchase = db.purchases.find(p => p.userId === req.user.id && p.movieId === id);
+    if (!purchase || purchase.status !== 'approved') {
+      return res.status(402).json({
+        error: purchase?.status === 'pending'
+          ? 'To\'lovingiz tekshirilmoqda — admin tasdiqlagach kino ochiladi'
+          : 'Bu kino pullik — avval sotib oling',
+        price: movie.price,
+        pending: purchase?.status === 'pending'
+      });
     }
   }
 
@@ -350,110 +374,112 @@ app.post('/api/bookmarks/:movieId', auth, (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Purchases API — karta bilan to'lov (demo shlyuz: Luhn + muddat tekshiradi,
-// haqiqiy pul yechilmaydi; real provayder ulash uchun shu joyga Stripe/Payme/
-// Click SDK chaqiruvi qo'yiladi)
+// Purchases API — haqiqiy to'lov: foydalanuvchi ko'rsatilgan kartaga pul
+// o'tkazadi (karta-ga-karta), keyin "To'lov qildim" bosadi. Admin panelda
+// to'lov tasdiqlanadi — shundan so'ng kino ochiladi.
 // ---------------------------------------------------------------------------
 
-function luhnValid(number) {
-  const digits = number.split('').reverse().map(Number);
-  const sum = digits.reduce((acc, d, i) => {
-    if (i % 2 === 1) {
-      d *= 2;
-      if (d > 9) d -= 9;
-    }
-    return acc + d;
-  }, 0);
-  return sum % 10 === 0;
-}
-
-function cardBrand(number) {
-  if (/^8600/.test(number)) return 'UzCard';
-  if (/^9860/.test(number)) return 'Humo';
-  if (/^4/.test(number)) return 'Visa';
-  if (/^5[1-5]/.test(number)) return 'Mastercard';
-  return 'Karta';
-}
-
-function validateCard(card) {
-  const number = String(card?.number || '').replace(/[\s-]/g, '');
-  const expiry = String(card?.expiry || '').trim();
-  const cvc = String(card?.cvc || '').trim();
-  const holder = String(card?.holder || '').trim();
-
-  if (!/^\d{16}$/.test(number)) return { error: 'Karta raqami 16 ta raqamdan iborat bo\'lishi kerak' };
-  if (!luhnValid(number)) return { error: 'Karta raqami noto\'g\'ri (tekshiruvdan o\'tmadi)' };
-
-  const m = expiry.match(/^(\d{2})\/(\d{2})$/);
-  if (!m) return { error: 'Amal qilish muddati MM/YY ko\'rinishida bo\'lishi kerak' };
-  const month = Number(m[1]);
-  const year = 2000 + Number(m[2]);
-  if (month < 1 || month > 12) return { error: 'Oy 01–12 oralig\'ida bo\'lishi kerak' };
-  const now = new Date();
-  if (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1)) {
-    return { error: 'Kartaning amal qilish muddati tugagan' };
+// To'lov rekvizitlari — foydalanuvchi pulni shu kartaga o'tkazadi
+app.get('/api/payment-card', auth, (req, res) => {
+  const { settings } = readDB();
+  if (!settings.cardNumber) {
+    return res.status(503).json({ error: 'To\'lov kartasi hali sozlanmagan — admin bilan bog\'laning' });
   }
+  res.json({ cardNumber: settings.cardNumber, cardOwner: settings.cardOwner });
+});
 
-  if (!/^\d{3,4}$/.test(cvc)) return { error: 'CVC 3–4 raqamdan iborat bo\'lishi kerak' };
-  if (holder.length < 3) return { error: 'Karta egasining ismini kiriting' };
-
-  return { number, brand: cardBrand(number), last4: number.slice(-4) };
-}
-
+// Foydalanuvchining xaridlari: tasdiqlanganlari va kutilayotganlari
 app.get('/api/purchases', auth, (req, res) => {
   const db = readDB();
-  res.json(db.purchases.filter(p => p.userId === req.user.id).map(p => p.movieId));
+  const mine = db.purchases.filter(p => p.userId === req.user.id);
+  res.json({
+    owned: mine.filter(p => p.status === 'approved').map(p => p.movieId),
+    pending: mine.filter(p => p.status === 'pending').map(p => p.movieId)
+  });
 });
 
-app.get('/api/purchases/history', auth, (req, res) => {
-  const db = readDB();
-  const list = db.purchases
-    .filter(p => p.userId === req.user.id)
-    .map(p => {
-      const movie = db.movies.find(m => m.id === p.movieId);
-      return { receiptId: p.receiptId, movie: movie?.name || '—', price: p.price, brand: p.brand, last4: p.last4, date: p.date };
-    });
-  res.json(list);
-});
-
-app.post('/api/purchases/:movieId', auth, wrap(async (req, res) => {
+// "To'lov qildim" — kutilayotgan to'lov yaratiladi
+app.post('/api/purchases/:movieId', auth, (req, res) => {
   const movieId = Number(req.params.movieId);
   const db = readDB();
   const movie = db.movies.find(m => m.id === movieId);
   if (!movie) return res.status(404).json({ error: 'Kino topilmadi' });
   if (!movie.price) return res.status(400).json({ error: 'Bu kino bepul — sotib olish shart emas' });
 
-  if (db.purchases.some(p => p.userId === req.user.id && p.movieId === movieId)) {
-    return res.status(409).json({ error: 'Bu kino allaqachon sotib olingan' });
-  }
+  const existing = db.purchases.find(p => p.userId === req.user.id && p.movieId === movieId);
+  if (existing?.status === 'approved') return res.status(409).json({ error: 'Bu kino allaqachon sotib olingan' });
+  if (existing?.status === 'pending') return res.status(409).json({ error: 'To\'lovingiz allaqachon tekshirilmoqda' });
 
-  const card = validateCard(req.body?.card);
-  if (card.error) return res.status(400).json({ error: card.error });
+  // Rad etilgan eski yozuv bo'lsa — o'chirib, yangi so'rov ochamiz
+  db.purchases = db.purchases.filter(p => !(p.userId === req.user.id && p.movieId === movieId));
 
-  // To'lov shlyuzi simulyatsiyasi: qayta ishlash kechikishi + standart rad karta
-  await new Promise(r => setTimeout(r, 600));
-  if (card.number === '4000000000000002') {
-    return res.status(402).json({ error: 'To\'lov rad etildi — kartada mablag\' yetarli emas' });
-  }
-
-  const receiptId = `CHK-${Date.now()}-${movieId}`;
   const purchase = {
+    id: Date.now(),
     userId: req.user.id,
+    userEmail: req.user.email,
     movieId,
     price: movie.price,
-    brand: card.brand,
-    last4: card.last4,
-    receiptId,
+    payerNote: String(req.body?.payerNote || '').slice(0, 120),
+    status: 'pending',
     date: new Date().toISOString()
   };
   db.purchases.push(purchase);
   writeDB(db);
 
-  res.status(201).json({
-    ok: true,
-    receipt: { receiptId, movie: movie.name, price: movie.price, brand: card.brand, last4: card.last4, date: purchase.date }
-  });
-}));
+  res.status(201).json({ ok: true, status: 'pending' });
+});
+
+// --- Admin: to'lovlarni boshqarish ----------------------------------------
+
+app.get('/api/admin/purchases', auth, adminOnly, (req, res) => {
+  const db = readDB();
+  const list = db.purchases.map(p => ({
+    ...p,
+    movie: db.movies.find(m => m.id === p.movieId)?.name || '—'
+  }));
+  // Kutilayotganlar birinchi, keyin sanasi bo'yicha yangi->eski
+  list.sort((a, b) => (a.status === 'pending' ? -1 : 1) - (b.status === 'pending' ? -1 : 1) || b.date.localeCompare(a.date));
+  res.json(list);
+});
+
+app.post('/api/admin/purchases/:id/approve', auth, adminOnly, (req, res) => {
+  const db = readDB();
+  const purchase = db.purchases.find(p => p.id === Number(req.params.id));
+  if (!purchase) return res.status(404).json({ error: 'To\'lov topilmadi' });
+  purchase.status = 'approved';
+  purchase.approvedAt = new Date().toISOString();
+  writeDB(db);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/purchases/:id/reject', auth, adminOnly, (req, res) => {
+  const db = readDB();
+  const purchase = db.purchases.find(p => p.id === Number(req.params.id));
+  if (!purchase) return res.status(404).json({ error: 'To\'lov topilmadi' });
+  purchase.status = 'rejected';
+  writeDB(db);
+  res.json({ ok: true });
+});
+
+// --- Admin: to'lov kartasi sozlamalari -------------------------------------
+
+app.get('/api/admin/settings', auth, adminOnly, (req, res) => {
+  const { settings } = readDB();
+  res.json({ cardNumber: settings.cardNumber, cardOwner: settings.cardOwner });
+});
+
+app.put('/api/admin/settings', auth, adminOnly, (req, res) => {
+  const cardNumber = String(req.body?.cardNumber || '').replace(/\s/g, '');
+  const cardOwner = String(req.body?.cardOwner || '').trim();
+  if (cardNumber && !/^\d{16}$/.test(cardNumber)) {
+    return res.status(400).json({ error: 'Karta raqami 16 ta raqamdan iborat bo\'lishi kerak' });
+  }
+  const db = readDB();
+  db.settings.cardNumber = cardNumber;
+  db.settings.cardOwner = cardOwner;
+  writeDB(db);
+  res.json({ ok: true });
+});
 
 // ---------------------------------------------------------------------------
 // Ishga tushirish

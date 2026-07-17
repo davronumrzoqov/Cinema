@@ -511,6 +511,11 @@ button {
     color: white;
 }
 
+.badge-pending {
+    background: #f0a821;
+    color: #3d2c00;
+}
+
 /* Saqlash tugmasi */
 
 .bookmark-btn {
@@ -820,24 +825,41 @@ button {
     font-size: 15px;
 }
 
-/* Checkout (karta) formasi */
+/* P2P to'lov oynasi */
 
-.checkout {
+.p2p-box,
+.pending-box {
     width: 100%;
 }
 
-.checkout .purchase-note {
+.p2p-box .purchase-note {
     margin-bottom: 14px;
 }
 
-.checkout-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 14px;
+.p2p-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    background: var(--bg);
+    border: 1px dashed var(--blue);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    margin-bottom: 10px;
 }
 
-.checkout .field-wide {
-    grid-column: 1 / -1;
+.p2p-number {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--text);
+}
+
+.p2p-owner {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 14px;
 }
 
 /* Google tugmasi va ajratkich */

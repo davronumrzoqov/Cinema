@@ -7,10 +7,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const state = {
     movies: [],
     bookmarks: new Set(),
-    purchases: new Set(),
+    purchases: new Set(),   // tasdiqlangan xaridlar
+    pending: new Set(),     // tekshirilayotgan to'lovlar
     query: '',
     filter: 'all' // all | movie | series | bookmarks
   };
+
+  // 13000 -> "13 000 so'm"
+  const fmtPrice = (p) => p ? String(p).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' so\'m' : 'Bepul';
 
   // ---------------------------------------------------------------------
   // Kirish majburiy — token yo'q yoki yaroqsiz bo'lsa, login sahifasiga
@@ -107,102 +111,83 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function luhnValid(number) {
-    const digits = number.split('').reverse().map(Number);
-    const sum = digits.reduce((acc, d, i) => {
-      if (i % 2 === 1) { d *= 2; if (d > 9) d -= 9; }
-      return acc + d;
-    }, 0);
-    return sum % 10 === 0;
-  }
-
-  function renderPurchaseUI(movie) {
+  function renderPendingUI(movie) {
     showPoster(movie);
     modalActions.innerHTML = `
-      <form id="checkout-form" class="checkout" novalidate>
-        <p class="purchase-note">Bu kino pullik — narxi <strong>$${movie.price.toFixed(2)}</strong>. Karta ma'lumotlarini kiriting:</p>
-        <div class="checkout-grid">
-          <div class="field field-wide">
-            <label for="cc-number">Karta raqami</label>
-            <input type="text" id="cc-number" inputmode="numeric" placeholder="8600 0000 0000 0000" maxlength="19" autocomplete="cc-number">
-          </div>
-          <div class="field">
-            <label for="cc-expiry">Muddati (MM/YY)</label>
-            <input type="text" id="cc-expiry" inputmode="numeric" placeholder="12/27" maxlength="5" autocomplete="cc-exp">
-          </div>
-          <div class="field">
-            <label for="cc-cvc">CVC</label>
-            <input type="text" id="cc-cvc" inputmode="numeric" placeholder="123" maxlength="4" autocomplete="cc-csc">
-          </div>
-          <div class="field field-wide">
-            <label for="cc-holder">Karta egasi</label>
-            <input type="text" id="cc-holder" placeholder="ISM FAMILIYA" autocomplete="cc-name">
-          </div>
+      <div class="pending-box">
+        <p class="purchase-note">⏳ To'lovingiz tekshirilmoqda. Admin tasdiqlagach «${movie.name}» avtomatik ochiladi — birozdan so'ng qayta urinib ko'ring.</p>
+      </div>`;
+  }
+
+  async function renderPurchaseUI(movie) {
+    showPoster(movie);
+    modalActions.innerHTML = '<p class="purchase-note">Yuklanmoqda…</p>';
+
+    let card;
+    try {
+      card = await Api.paymentCard();
+    } catch (err) {
+      modalActions.innerHTML = `<p class="form-error">${err.message}</p>`;
+      return;
+    }
+
+    const prettyCard = card.cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
+    modalActions.innerHTML = `
+      <div class="p2p-box">
+        <p class="purchase-note">Bu kino pullik — narxi <strong>${fmtPrice(movie.price)}</strong>.
+        Quyidagi kartaga <strong>${fmtPrice(movie.price)}</strong> o'tkazing, so'ng «To'lov qildim» tugmasini bosing:</p>
+        <div class="p2p-card">
+          <span class="p2p-number" id="p2p-number">${prettyCard}</span>
+          <button type="button" class="btn btn-ghost btn-sm" id="copy-card">Nusxa olish</button>
+        </div>
+        ${card.cardOwner ? `<p class="p2p-owner">Karta egasi: <strong>${card.cardOwner}</strong></p>` : ''}
+        <div class="field field-wide">
+          <label for="payer-note">Izoh (ixtiyoriy — qaysi raqamdan o'tkazdingiz?)</label>
+          <input type="text" id="payer-note" placeholder="Masalan: 90 123 45 67 raqamidan o'tkazdim" maxlength="120">
         </div>
         <p id="checkout-error" class="form-error" role="alert"></p>
-        <button type="submit" class="btn btn-primary btn-block">To'lash — $${movie.price.toFixed(2)}</button>
-      </form>`;
+        <button type="button" class="btn btn-primary btn-block" id="paid-btn">✓ To'lov qildim — ${fmtPrice(movie.price)}</button>
+      </div>`;
 
-    const numberEl = document.getElementById('cc-number');
-    const expiryEl = document.getElementById('cc-expiry');
-    const form = document.getElementById('checkout-form');
-    const errEl = document.getElementById('checkout-error');
-
-    // Karta raqamini 4 talik guruhlarga formatlash
-    numberEl.addEventListener('input', () => {
-      const digits = numberEl.value.replace(/\D/g, '').slice(0, 16);
-      numberEl.value = digits.replace(/(\d{4})(?=\d)/g, '$1 ');
-    });
-
-    // MM/YY avtomatik "/" qo'yish
-    expiryEl.addEventListener('input', () => {
-      let v = expiryEl.value.replace(/\D/g, '').slice(0, 4);
-      if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
-      expiryEl.value = v;
-    });
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errEl.textContent = '';
-
-      const card = {
-        number: numberEl.value.replace(/\s/g, ''),
-        expiry: expiryEl.value.trim(),
-        cvc: document.getElementById('cc-cvc').value.trim(),
-        holder: document.getElementById('cc-holder').value.trim()
-      };
-
-      if (!/^\d{16}$/.test(card.number)) { errEl.textContent = 'Karta raqami 16 ta raqamdan iborat bo\'lishi kerak'; return; }
-      if (!luhnValid(card.number)) { errEl.textContent = 'Karta raqami noto\'g\'ri — qayta tekshiring'; return; }
-      if (!/^\d{2}\/\d{2}$/.test(card.expiry)) { errEl.textContent = 'Muddat MM/YY ko\'rinishida bo\'lishi kerak'; return; }
-      if (!/^\d{3,4}$/.test(card.cvc)) { errEl.textContent = 'CVC 3–4 raqam'; return; }
-      if (card.holder.length < 3) { errEl.textContent = 'Karta egasining ismini kiriting'; return; }
-
-      const payBtn = form.querySelector('button[type="submit"]');
-      payBtn.disabled = true;
-      payBtn.classList.add('btn-loading');
+    document.getElementById('copy-card').addEventListener('click', async () => {
       try {
-        const { receipt } = await Api.purchase(movie.id, card);
-        state.purchases.add(movie.id);
-        showToast(`To'lov qabul qilindi: ${receipt.brand} •••• ${receipt.last4} — $${receipt.price.toFixed(2)} (${receipt.receiptId})`, 'success');
+        await navigator.clipboard.writeText(card.cardNumber);
+        showToast('Karta raqami nusxalandi', 'success');
+      } catch {
+        showToast('Nusxalab bo\'lmadi — raqamni qo\'lda kiriting', 'error');
+      }
+    });
+
+    document.getElementById('paid-btn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.classList.add('btn-loading');
+      try {
+        await Api.purchase(movie.id, document.getElementById('payer-note').value.trim());
+        state.pending.add(movie.id);
+        showToast('To\'lov qayd etildi — admin tasdiqlagach kino ochiladi', 'success');
         render();
-        await playMovie(movie);
+        renderPendingUI(movie);
       } catch (err) {
-        errEl.textContent = err.message;
-        payBtn.disabled = false;
-        payBtn.classList.remove('btn-loading');
+        document.getElementById('checkout-error').textContent = err.message;
+        btn.disabled = false;
+        btn.classList.remove('btn-loading');
       }
     });
   }
 
   function openModal(movie) {
     modalTitle.textContent = movie.name;
-    modalMeta.innerHTML = `<span>${movie.year}</span><span class="dot" aria-hidden="true"></span><span>${movie.genre}</span><span class="dot" aria-hidden="true"></span><span>${movie.limit}</span><span class="dot" aria-hidden="true"></span><span>${movie.price ? '$' + movie.price.toFixed(2) : 'Bepul'}</span>`;
+    modalMeta.innerHTML = `<span>${movie.year}</span><span class="dot" aria-hidden="true"></span><span>${movie.genre}</span><span class="dot" aria-hidden="true"></span><span>${movie.limit}</span><span class="dot" aria-hidden="true"></span><span>${fmtPrice(movie.price)}</span>`;
     modal.classList.remove('hidden');
 
-    const needsPurchase = movie.price > 0 && !state.purchases.has(movie.id);
-    if (needsPurchase) renderPurchaseUI(movie);
-    else { showPoster(movie); playMovie(movie); }
+    if (movie.price > 0 && !state.purchases.has(movie.id)) {
+      if (state.pending.has(movie.id)) renderPendingUI(movie);
+      else renderPurchaseUI(movie);
+    } else {
+      showPoster(movie);
+      playMovie(movie);
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -214,9 +199,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (movie.price && state.purchases.has(movie.id)) {
       badge.className = 'badge badge-owned';
       badge.textContent = 'Sotib olingan';
+    } else if (movie.price && state.pending.has(movie.id)) {
+      badge.className = 'badge badge-pending';
+      badge.textContent = 'Tekshirilmoqda';
     } else if (movie.price) {
       badge.className = 'badge badge-paid';
-      badge.textContent = `$${movie.price.toFixed(2)}`;
+      badge.textContent = fmtPrice(movie.price);
     } else {
       badge.className = 'badge badge-free';
       badge.textContent = 'Bepul';
@@ -401,11 +389,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const [movies, bookmarks, purchases] = await Promise.all([
       Api.movies(),
       Api.bookmarks().catch(() => []),
-      Api.purchases().catch(() => [])
+      Api.purchases().catch(() => ({ owned: [], pending: [] }))
     ]);
     state.movies = movies;
     state.bookmarks = new Set(bookmarks);
-    state.purchases = new Set(purchases);
+    state.purchases = new Set(purchases.owned);
+    state.pending = new Set(purchases.pending);
     render();
   } catch (err) {
     document.getElementById('all-grid').innerHTML =

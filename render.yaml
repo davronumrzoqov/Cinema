@@ -1,0 +1,20 @@
+# Render.com deploy sozlamasi.
+# render.com da "New +" -> "Blueprint" -> GitHub repo'ni tanlang — shu fayl o'qiladi.
+services:
+  - type: web
+    name: cinema
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@cinema.uz
+      - key: ADMIN_PASSWORD
+        sync: false # deploy paytida Render dashboardda qo'lda kiritiladi
+      - key: PAYMENT_CARD_NUMBER
+        sync: false # pul tushadigan karta raqami (dashboardda kiritiladi)
+      - key: PAYMENT_CARD_OWNER
+        sync: false # karta egasining ismi
